@@ -2,12 +2,13 @@ import os
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torchvision.transforms.functional as TF
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from utils.configLoad import load_config
 from models.NCAImpl import NCAModel
 from utils.imageUtils import make_seed, make_circle_masks, to_rgb
-from dataset.dataloader import cifar10_dataloader, mnist_dataloader
+from dataset.dataloader import cifar10_dataloader, mnist_dataloader, stl10_dataloaders
 
 
 def setup_seed_pool(H, W, N_CHANNEL, POOL_SIZE, device):
@@ -17,12 +18,26 @@ def setup_seed_pool(H, W, N_CHANNEL, POOL_SIZE, device):
     return pool
 
 
+def dynamic_n_steps(epoch, base_steps=64, max_steps=148, growth_rate=0.0008):
+    steps = base_steps + int(
+        (max_steps - base_steps) * (1 - np.exp(-growth_rate * epoch))
+    )
+    return min(steps, max_steps)
+
+
 def compute_loss(x, target):
     mse = F.mse_loss(x[:, : target.shape[1]], target)
+    # print(f"x shape : {x.shape}, target shape {target.shape}")
     rgb = x[:, :3]
     variance_penalty = -torch.mean(torch.var(rgb, dim=[2, 3]))
     rgb_mean_penalty = ((rgb.mean(dim=(2, 3)) - 0.5) ** 2).mean()  # regularization
-    total_loss = mse + 0.1 * variance_penalty + 0.01 * rgb_mean_penalty
+    saturation_penalty = torch.mean((rgb - 0.5) ** 4)
+    total_loss = (
+        mse
+        + 0.1 * variance_penalty
+        + 0.01 * rgb_mean_penalty
+        + 0.05 * saturation_penalty
+    )
     return total_loss, mse, variance_penalty, rgb_mean_penalty
 
 
@@ -63,24 +78,30 @@ def main():
     DAMAGE_N = config["damage_n"]
     SAVE_PATH = config["checkpoint_path"]
     dataset = config["dataset"].lower()
+    TARGET_LABEL = config["targets_label"]
 
     # === Dataset & Target ===
     loader = (
-        mnist_dataloader(batch_size=1)
-        if dataset == "mnist"
-        else cifar10_dataloader(batch_size=1)
+        cifar10_dataloader(batch_size=BATCH_SIZE)
+        if dataset == "cifar10"
+        else stl10_dataloaders(batch_size=BATCH_SIZE, targets_label=TARGET_LABEL)
     )
-    target_batch, _ = next(iter(loader))
+    target_batch, targets_label = next(iter(loader))
     target_image = target_batch.to(device)
+    target_image = target_image.repeat(BATCH_SIZE, 1, 1, 1)
     _, C, H, W = target_image.shape
     print("Target shape:", target_image.shape)
+
+    # === Sauvegarde de l'image cible ===
+    img = target_image[0].cpu().permute(1, 2, 0).clamp(0.0, 1.0).numpy()
+    plt.imsave("outputs/target_image.png", img)
 
     # === Model & Training Setup ===
     model = NCAModel(N_CHANNEL, HIDDEN_CHANNELS, FIRE_RATE, device).to(device)
     optimizer = optim.Adam(model.parameters(), lr=LR)
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=LR_GAMMA)
 
-    pool = setup_seed_pool(H, W, N_CHANNEL, POOL_SIZE, device)
+    pool = setup_seed_pool(H, W, N_CHANNEL, BATCH_SIZE, device)
 
     # === Training Loop ===
     os.makedirs("outputs", exist_ok=True)
@@ -88,6 +109,7 @@ def main():
     loss_log = []
 
     for i in range(EPOCHS + 1):
+        current_n_steps = dynamic_n_steps(i)
         x = pool[:BATCH_SIZE].clone()
 
         if DAMAGE_N > 0:
@@ -99,8 +121,8 @@ def main():
             optimizer,
             scheduler,
             x,
-            target_image.repeat(BATCH_SIZE, 1, 1, 1),
-            N_STEPS,
+            target_image,  # repeat(BATCH_SIZE, 1, 1, 1)
+            current_n_steps,
         )
 
         # Reset Pool
@@ -116,7 +138,7 @@ def main():
 
         if i % 100 == 0:
             print(
-                f"[{i:05d}] Loss: {loss:.6f} | MSE: {mse:.6f} | Var Penalty: {var_penalty:.6f} | "
+                f"[{i:05d}] Loss: {loss:.6f} | MSE: {mse:.6f}| Var Penalty: {var_penalty:.6f} | Steps: {current_n_steps}"
                 f"RGB Mean Penalty: {rgb_mean_penalty:.6f} | Mean RGB: {[round(m, 3) for m in mean_rgb]} | Min: {rgb.min():.3f} Max: {rgb.max():.3f}"
             )
 

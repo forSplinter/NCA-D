@@ -1,10 +1,10 @@
 # === Dataset ===
-dataset: "cifar10"
+dataset: "sl10"
 
 # === Cellular automata parameters ===
-n_channel : 16 
-fire_rate: 0.1
-hidden_channels: 128
+n_channel :  32
+fire_rate: 0.3
+hidden_channels: 256 
 
 experiment_map:
   Growing: 0
@@ -12,11 +12,12 @@ experiment_map:
   Regenerating: 2
 
 #=== Training parameters ===
-batch_size: 8
+batch_size: 1
 epochs: 10000 
 n_steps: 148 #[64 - 96 - 128 - 132 - 148]
 lr: 0.001
 lr_gamma: 0.999
+targets_label: 3
 
 #=== Pattern Pool parameters ===
 pool_size: 1024

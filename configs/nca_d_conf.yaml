@@ -3,7 +3,7 @@ dataset: "cifar10"
 
 # === Cellular automata parameters ===
 n_channel : 16 
-fire_rate: 0.5
+fire_rate: 0.1
 hidden_channels: 128
 
 experiment_map:
@@ -13,8 +13,8 @@ experiment_map:
 
 #=== Training parameters ===
 batch_size: 8
-epochs: 5000 
-n_steps: 96 #[64-96]
+epochs: 10000 
+n_steps: 128 #[64-96]
 lr: 0.001
 lr_gamma: 0.999
 

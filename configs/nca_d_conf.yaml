@@ -14,7 +14,7 @@ experiment_map:
 #=== Training parameters ===
 batch_size: 8
 epochs: 10000 
-n_steps: 128 #[64-96]
+n_steps: 148 #[64 - 96 - 128 - 132 - 148]
 lr: 0.001
 lr_gamma: 0.999
 

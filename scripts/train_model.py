@@ -12,7 +12,7 @@ from dataset.dataloader import cifar10_dataloader, mnist_dataloader
 
 def setup_seed_pool(H, W, N_CHANNEL, POOL_SIZE, device):
     seed = torch.tensor(make_seed((H, W), N_CHANNEL)).permute(2, 0, 1)
-    seed[:3] += torch.rand_like(seed[:3]) * 0.05  # léger bruit sur RGB
+    seed[:3] += torch.rand_like(seed[:3]) * 0.05  # Adding Noise
     pool = seed.unsqueeze(0).repeat(POOL_SIZE, 1, 1, 1).to(device)
     return pool
 

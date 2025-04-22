@@ -15,6 +15,8 @@ def mnist_dataloader(batch_size=32, train=True, shuffle=True):
     )
     data_loader = DataLoader(dataset=mnist_data, batch_size=batch_size, shuffle=shuffle)
 
+    return data_loader
+
 
 def cifar10_dataloader(batch_size=32, train=True, shuffle=True):
     transform = transforms.Compose(

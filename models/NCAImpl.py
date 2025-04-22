@@ -28,7 +28,9 @@ class NCAModel(nn.Module):
         self.update = nn.Sequential(
             nn.Conv2d(3 * self.n_channel, self.hidden_layer, kernel_size=1),
             nn.ReLU(),
-            nn.Conv2d(self.hidden_layer, self.n_channel, kernel_size=1, bias=False),
+            nn.Conv2d(
+                self.hidden_layer, self.n_channel, kernel_size=1, bias=True
+            ),  # bias=True
         )
 
     def perception(self, x):

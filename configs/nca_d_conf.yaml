@@ -2,7 +2,7 @@
 dataset: "cifar10"
 
 # === Cellular automata parameters ===
-n_channel : 16
+n_channel : 16 
 fire_rate: 0.5
 hidden_channels: 128
 
